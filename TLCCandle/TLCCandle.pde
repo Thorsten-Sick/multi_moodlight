@@ -49,6 +49,28 @@
 
 #include "Tlc5940.h"
 
+const int numcandles = 5;
+
+struct candledata {
+  // Min values
+  int minr;
+  int ming;
+  int minb;
+  int minbright;
+  
+  // Max values
+  int maxr;
+  int maxg;
+  int maxb;
+  int maxbright;
+  
+  int flicker;
+};
+
+struct candledata candle[numcandles];
+
+/*
+
 // Min values
 int minr=100;
 int ming=100;
@@ -60,6 +82,8 @@ int maxr=100;
 int maxg=100;
 int maxb=0;
 int maxbright=100;
+*/
+
 
 const int flicker=500;
 
@@ -78,6 +102,18 @@ void setup()
   Tlc.init();
   Tlc.clear();
   Serial.begin(9600);
+  
+  // Set candles
+  for (int i = 0; i < numcandles; i++){
+      candle[i].minr=50;
+      candle[i].maxr=50;
+      candle[i].ming=50;
+      candle[i].maxg=50;
+      candle[i].minb=50;
+      candle[i].maxb=50;
+      candle[i].minbright=50;
+      candle[i].maxbright=50;
+  }
 }
 
 /* This loop will create a Knight Rider-like effect if you have LEDs plugged
@@ -98,29 +134,52 @@ void set_candle(int number, int red, int green, int blue, float brightness)
   
   channel = number * 3;
   
-  ired = 40*red; // max is 4095, so 40*100=4000 is good and we do not overflow
-  igreen = 40*green;
-  iblue = 40*blue;
+  ired = 40 * red; // max is 4095, so 40*100=4000 is good and we do not overflow
+  igreen = 40 * green;
+  iblue = 40 * blue;
   
-  Tlc.set(channel, int(ired*brightness/100));
-  Tlc.set(channel + 1, int(igreen*brightness/100));
-  Tlc.set(channel + 2, int(iblue*brightness/100));
+  Serial.print("IRED: "); 
+  Serial.println(ired);
+  
+  Tlc.set(channel, int(ired * brightness/100));
+  Tlc.set(channel + 1, int(igreen * brightness/100));
+  Tlc.set(channel + 2, int(iblue * brightness/100));
 
 }
 
-void loop()
+/**
+* 
+* Do some random calculation for new candle values. Also update the candle
+*
+*
+*
+**/
+void random_candle(int number)
 {
     int r,g,b, bright;
-    r = random (minr, maxr);
-    g = random (ming, maxg);
-    b = random (minb, maxb);
-    bright=random(minbright,maxbright);
-    
-    set_candle(0, r, g, b, bright);
-    set_candle(1, r, g, b, bright);
-    set_candle(2, r, g, b, bright);
-    set_candle(3, r, g, b, bright);
-    set_candle(4, r, g, b, bright);
+    Serial.println("Setting");
+    Serial.print("Number: ");
+    Serial.println(number);
+    Serial.print("R: ");
+    Serial.println(candle[number].minr);
+    Serial.print("G: ");
+    Serial.println(candle[number].ming);
+    Serial.print("B: ");
+    Serial.println(candle[number].minb);
+          
+    r = random (candle[number].minr, candle[number].maxr);
+    g = random (candle[number].ming, candle[number].maxg);
+    b = random (candle[number].minb, candle[number].maxb);
+    bright=random(candle[number].minbright,candle[number].maxbright);
+          
+    set_candle(number, r, g, b, bright);
+}
+
+void loop()
+{   
+    for (int i = 0; i < numcandles; i++)
+        random_candle(i);
+
     Tlc.update();
 
     delay(flicker);
@@ -142,11 +201,7 @@ void loop()
         
       }
       else if (ch==',')
-      {
-        Serial.print("Field: ");
-        Serial.println(fieldIndex);
-        Serial.print("Value: ");
-        Serial.println(values[fieldIndex]);
+      {       
         if (fieldIndex < NUMBER_OF_FIELDS - 1)
         {
           fieldIndex ++;
@@ -154,33 +209,24 @@ void loop()
       }
       else if (ch='g') // go !
       {
-        // values[0]=candle
-        minr=values[1];
-        maxr=values[2];
-        ming=values[3];
-        maxg=values[4];
-        minb=values[5];
-        maxb=values[6];
-        minbright=values[7];
-        maxbright=values[8];
-        // Parse results
-        Serial.println("Setting");
+        int num;
         
-        r = random (minr, maxr);
-    g = random (ming, maxg);
-    b = random (minb, maxb);
-    bright=random(minbright,maxbright);
-    
-    set_candle(0, r, g, b, bright);
-    set_candle(1, r, g, b, bright);
-    set_candle(2, r, g, b, bright);
-    set_candle(3, r, g, b, bright);
-    set_candle(4, r, g, b, bright);
-    Tlc.update();
-    for (int i ; i<NUMBER_OF_FIELDS; i++)
-    {
-      values[i]=0;
-    }
+        num = values[0];
+        candle[num].minr = values[1];
+        candle[num].maxr = values[2];
+        candle[num].ming = values[3];
+        candle[num].maxg = values[4];
+        candle[num].minb = values[5];
+        candle[num].maxb = values[6];
+        candle[num].minbright = values[7];
+        candle[num].maxbright = values[8];
+        
+        random_candle(num);
+        Tlc.update();
+        for (int i ; i<NUMBER_OF_FIELDS; i++)
+        {
+            values[i] = 0;
+        }
       }
       else
       {
