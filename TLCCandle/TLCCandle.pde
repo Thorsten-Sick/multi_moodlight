@@ -53,39 +53,38 @@ const int numcandles = 5;
 
 struct candledata {
   // Min values
-  int minr;
-  int ming;
-  int minb;
-  int minbright;
+  unsigned char minr;
+  unsigned char ming;
+  unsigned char minb;
+  unsigned char minbright;
   
   // Max values
-  int maxr;
-  int maxg;
-  int maxb;
-  int maxbright;
+  unsigned char maxr;
+  unsigned char maxg;
+  unsigned char maxb;
+  unsigned char maxbright;
   
   int flicker;
 };
 
+// Program steps
+struct pstep{
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+  unsigned char bright;
+  int delayafter;
+};
+
+// Program position
+int ppos = 0;
+
 struct candledata candle[numcandles];
 
-/*
-
-// Min values
-int minr=100;
-int ming=100;
-int minb=0;
-int minbright=80;
-
-// Max values
-int maxr=100;
-int maxg=100;
-int maxb=0;
-int maxbright=100;
-*/
+const int debugprint = 0;
 
 
-const int flicker=500;
+const int flicker = 500;
 
 // Serial parser
 
@@ -93,6 +92,7 @@ const int NUMBER_OF_FIELDS=9;
 int fieldIndex=0;
 int values[NUMBER_OF_FIELDS];
 
+int set = 0;
 
 void setup()
 {
@@ -101,7 +101,9 @@ void setup()
   randomSeed(1235);
   Tlc.init();
   Tlc.clear();
-  Serial.begin(9600);
+  if (debugprint)
+    Serial.begin(9600);
+  set = 0;
   
   // Set candles
   for (int i = 0; i < numcandles; i++){
@@ -116,10 +118,6 @@ void setup()
   }
 }
 
-/* This loop will create a Knight Rider-like effect if you have LEDs plugged
-   into all the TLC outputs.  NUM_TLCS is defined in "tlc_config.h" in the
-   library folder.  After editing tlc_config.h for your setup, delete the
-   Tlc5940.o file to save the changes. */
 
 /**
 *
@@ -127,23 +125,52 @@ void setup()
 * brightness: between 0 and 100
 *
 */
-void set_candle(int number, int red, int green, int blue, float brightness)
+void set_candle(unsigned char number, int red, int green, int blue, int brightness)
 {
   int channel;
   int ired, iblue, igreen;
+
+  if ((number < 0) || (number >= numcandles))
+    return;
+
   
+  // max is 4095, so 40*100=4000 is good and we do not overflow
   channel = number * 3;
+
   
-  ired = 40 * red; // max is 4095, so 40*100=4000 is good and we do not overflow
-  igreen = 40 * green;
-  iblue = 40 * blue;
   
-  Serial.print("IRED: "); 
-  Serial.println(ired);
+  ired = int (40 * red / 100 * brightness); 
+  igreen = int (40 * green / 100 * brightness);
+  iblue = int (40 * blue / 100 * brightness);
+
+  if (ired < 0)
+    ired = 0;
+  if (ired > 4095)
+    ired = 4095;
+    
+  if (iblue < 0)
+    iblue = 0;
+  if (iblue > 4095)
+    iblue = 4095;
+    
+  if (igreen < 0)
+    igreen = 0;
+  if (igreen > 4095)
+    igreen = 4095;    
   
-  Tlc.set(channel, int(ired * brightness/100));
-  Tlc.set(channel + 1, int(igreen * brightness/100));
-  Tlc.set(channel + 2, int(iblue * brightness/100));
+  
+  if (debugprint){
+      Serial.print("red: "); 
+      Serial.println(red);
+      Serial.print("bright: "); 
+      Serial.println(brightness);
+      Serial.print("IRED: "); 
+      Serial.println(ired);
+  }
+  
+  Tlc.set(channel, ired);
+  Tlc.set(channel + 1, igreen);
+  Tlc.set(channel + 2, iblue);
 
 }
 
@@ -151,21 +178,23 @@ void set_candle(int number, int red, int green, int blue, float brightness)
 * 
 * Do some random calculation for new candle values. Also update the candle
 *
-*
+* number: the cnadle to sets
 *
 **/
 void random_candle(int number)
 {
     int r,g,b, bright;
-    Serial.println("Setting");
-    Serial.print("Number: ");
-    Serial.println(number);
-    Serial.print("R: ");
-    Serial.println(candle[number].minr);
-    Serial.print("G: ");
-    Serial.println(candle[number].ming);
-    Serial.print("B: ");
-    Serial.println(candle[number].minb);
+    if (debugprint){
+        Serial.println("Setting");
+        Serial.print("Number: ");
+        Serial.println(number);
+        Serial.print("R: ");
+        Serial.println(candle[number].minr);
+        Serial.print("G: ");
+        Serial.println(candle[number].ming);
+        Serial.print("B: ");
+        Serial.println(candle[number].minb);
+    }
           
     r = random (candle[number].minr, candle[number].maxr);
     g = random (candle[number].ming, candle[number].maxg);
@@ -175,9 +204,9 @@ void random_candle(int number)
     set_candle(number, r, g, b, bright);
 }
 
-void loop()
-{   
-    for (int i = 0; i < numcandles; i++)
+void serial_control()
+{
+for (int i = 0; i < numcandles; i++)
         random_candle(i);
 
     Tlc.update();
@@ -233,10 +262,133 @@ void loop()
         // Do nothing not a command
       }
     }
-    
-    
-    // Ends read from serial
+}
 
+/** Simulate fire
+*
+* red from: 100 to 100
+* green from: 50 to 0
+* blue: 0
+* bright: from 0 to 100, there is not much difference from 40 to 100
+*
+* ppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 16;
+  struct pstep program[length] = {{100,80,10,100,70},
+                              {100,70,10,100,7},
+                              {100,50,10,100,55},
+                              {100,30,10,100,40},
+                              {100,35,3,100,4},
+                              {100,10,10,80,50},
+                              {100,30,10,100,40},
+                              {100,50,10,100,40},
+                              
+                              {100,90,5,80,70},
+                              {100,80,5,80,7},
+                              {100,60,5,80,55},
+                              {100,40,5,80,40},
+                              {100,35,3,80,4},
+                              {100,20,5,70,50},
+                              {100,40,5,80,40},
+                              {100,60,5,80,40}
+                            };
+  struct pstep command;
+  
+  ppos = ppos + 1;
+  if (ppos >= length)
+    ppos = 0;
+    
+  command = program[ppos];
+  
+  set_candle(2,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(1,command.r-10+rmod, command.g-10+gmod, command.b+bmod, command.bright-30+brightmod);
+  set_candle(3,command.r-10+rmod, command.g-10+gmod, command.b+bmod, command.bright-30+brightmod);
+  set_candle(0,command.r-20+rmod, command.g-20+gmod, command.b+bmod, command.bright-60+brightmod);
+  set_candle(4,command.r-20+rmod, command.g-20+gmod, command.b+bmod, command.bright-60+brightmod);
+
+  Tlc.update();
+  delay(command.delayafter+speedmod);
+
+  return ppos;  
+}
+
+/** Simulate heart pumping
+*
+*
+* ppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 22;
+  struct pstep program[length] = {{50,50,50,0,70},
+                                  {50,50,50,30,70},
+                                  {50,50,50,50,70},
+                                  {50,50,50,70,70},
+                                  {50,50,50,90,70},
+                                  {50,50,50,100,100},
+                                  {50,50,50,90,70},
+                                  {50,50,50,70,70},
+                                  {50,50,50,50,70},
+                                  {50,50,50,30,90},
+                                  {50,50,50,0,90},
+                                  
+                                  {50,50,50,0,70},
+                                  {50,50,50,30,70},
+                                  {50,50,50,50,70},
+                                  {50,50,50,70,70},
+                                  {50,50,50,90,70},
+                                  {50,50,50,100,100},
+                                  {50,50,50,90,70},
+                                  {50,50,50,70,70},
+                                  {50,50,50,50,90},
+                                  {50,50,50,30,90},
+                                  {50,50,50,0,500},
+                                  
+                                  
+                            };
+  struct pstep command;
+  
+  ppos = ppos + 1;
+  if (ppos >= length)
+    ppos = 0;
+    
+  command = program[ppos];
+  
+  set_candle(0,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(1,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(2,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(3,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(4,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+
+  Tlc.update();
+  delay(command.delayafter+speedmod);
+
+  return ppos;  
+}
+
+void loop()
+{
+    //serial_control();
+    //ppos = fire(ppos,0,-50,80,0,0);
+    ppos = pump(ppos,-100,-100,100,0,0);
 }
 // 1,90,90,30,30,10,10,90,100g
 // 1,20,20,90,90,10,10,90,100g
