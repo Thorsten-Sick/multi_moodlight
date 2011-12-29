@@ -8,13 +8,14 @@ Canle, rmin,rmax, gmin, gmax, bluemin, bluemx, brightnessmin/max
 
 import serial
 import time
+import random
 #ser = serial.Serial("/dev/ttyACM0", baudrate = 9600)
 
 class Candle():
     """ A candle
     """
 
-    def __init__(self, ser, number = 1, autoupdate = False):
+    def __init__(self, ser, number = 1, autoupdate = True):
         """ Inits a candle and sets it to default values
 
         ser: Serial interface
@@ -82,12 +83,33 @@ class Candle():
 
         self.set(r,r,g,g,b,b,h,h)
 
+def candles_random(cs):
+    """ Set candles randomly
+    """
+    while 1:
+        for i in cs:
+            i.simpleset(random.randint(0,100),random.randint(0,100),random.randint(0,100),random.randint(0,100))
+            i.update()
+            time.sleep(1)
+
+def candles_fire(cs):
+    """ Simulate fire
+    """
+
+    print len(cs)
+    while 1:
+        for i in cs:
+            i.simpleset(random.randint(80,100),random.randint(80,100),random.randint(20,25),random.randint(90,100))
+            time.sleep(1)
 
 if __name__=="__main__":
     ser = serial.Serial("/dev/ttyACM0", baudrate = 9600)
     #print ser.write("1,90,90,20,20,30,30,20,100g")
-    c1 = Candle(ser)
-    c1.update()
-    time.sleep(1)
-    c1.simpleset(10,50,10,90)
-    c1.update()
+    cs = []
+    for i in range(5):
+        c1 = Candle(ser, number = i)
+        c1.update()
+        cs.append(c1)
+
+#    candles_random(cs)
+    candles_random(cs)
