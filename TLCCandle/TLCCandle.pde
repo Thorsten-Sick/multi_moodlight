@@ -444,12 +444,75 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
   return ppos;  
 }
 
+/** Simulate an alert
+*
+*
+* ppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 19;
+  struct pstep program[length] = {{0,0,0,0,2000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,6000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,60},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,3000},
+                                  
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,3000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,90},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,2000},
+                                  
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,9000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,160},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,4000},
+                                  
+                            };
+  struct pstep command;
+  
+  ppos = ppos + 1;
+  if (ppos >= numcandles)
+    ppos = 0;
+    
+  command = program[ppos];
+  
+  for (int i = 0; i< numcandles; i ++)
+  {
+    if (i != ppos)
+      set_candle(i,0,0,0,0);
+  }
+  
+  set_candle(ppos,100 + rmod, 100 + gmod, 100 + bmod, 100 + brightmod);
+  
+  Tlc.update();
+  delay(100+speedmod);
+
+  return ppos;  
+}
+
+
 void loop()
 {
     //serial_control();
     //ppos = fire(ppos,0,-50,80,0,0);
     //ppos = pump(ppos,-100,-100,100,0,0);
-    ppos = lightning(ppos,0,0,0,0,0);
+    //ppos = lightning(ppos,-100,-100,100,0,0);
+    ppos = alert(ppos,100,-100,-100,0,0);
 }
 // 1,90,90,30,30,10,10,90,100g
 // 1,20,20,90,90,10,10,90,100g
