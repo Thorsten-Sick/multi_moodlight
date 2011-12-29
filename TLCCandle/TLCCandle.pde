@@ -338,29 +338,29 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 22;
-  struct pstep program[length] = {{50,50,50,0,70},
-                                  {50,50,50,30,70},
-                                  {50,50,50,50,70},
-                                  {50,50,50,70,70},
-                                  {50,50,50,90,70},
-                                  {50,50,50,100,100},
-                                  {50,50,50,90,70},
-                                  {50,50,50,70,70},
-                                  {50,50,50,50,70},
-                                  {50,50,50,30,90},
-                                  {50,50,50,0,90},
+  struct pstep program[length] = {{50,50,50,0,35},
+                                  {50,50,50,30,35},
+                                  {50,50,50,50,35},
+                                  {50,50,50,70,35},
+                                  {50,50,50,90,35},
+                                  {50,50,50,100,50},
+                                  {50,50,50,90,35},
+                                  {50,50,50,70,35},
+                                  {50,50,50,50,35},
+                                  {50,50,50,30,45},
+                                  {50,50,50,0,45},
                                   
-                                  {50,50,50,0,70},
-                                  {50,50,50,30,70},
-                                  {50,50,50,50,70},
-                                  {50,50,50,70,70},
-                                  {50,50,50,90,70},
-                                  {50,50,50,100,100},
-                                  {50,50,50,90,70},
-                                  {50,50,50,70,70},
-                                  {50,50,50,50,90},
-                                  {50,50,50,30,90},
-                                  {50,50,50,0,500},
+                                  {50,50,50,0,35},
+                                  {50,50,50,30,35},
+                                  {50,50,50,50,35},
+                                  {50,50,50,70,35},
+                                  {50,50,50,90,35},
+                                  {50,50,50,100,50},
+                                  {50,50,50,90,35},
+                                  {50,50,50,70,35},
+                                  {50,50,50,50,45},
+                                  {50,50,50,30,45},
+                                  {50,50,50,0,800},
                                   
                                   
                             };
@@ -459,7 +459,7 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
 **/
 int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
-  const int length = 19;
+  /*const int length = 19;
   struct pstep program[length] = {{0,0,0,0,2000},
                                   {100,100,100,100,20},
                                   {0,0,0,0,6000},
@@ -482,14 +482,14 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
                                   {100,100,100,100,20},
                                   {0,0,0,0,4000},
                                   
-                            };
+                            };*/
   struct pstep command;
   
   ppos = ppos + 1;
   if (ppos >= numcandles)
     ppos = 0;
     
-  command = program[ppos];
+  //command = program[ppos];
   
   for (int i = 0; i< numcandles; i ++)
   {
@@ -509,10 +509,10 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 void loop()
 {
     //serial_control();
-    //ppos = fire(ppos,0,-50,80,0,0);
-    //ppos = pump(ppos,-100,-100,100,0,0);
+    //ppos = fire(ppos,0,0,0,0,0);
+    ppos = pump(ppos,-100,-100,100,0,0);
     //ppos = lightning(ppos,-100,-100,100,0,0);
-    ppos = alert(ppos,100,-100,-100,0,0);
+    //ppos = alert(ppos,0,0,-40,0,0);
 }
 // 1,90,90,30,30,10,10,90,100g
 // 1,20,20,90,90,10,10,90,100g
