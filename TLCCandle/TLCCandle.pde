@@ -384,11 +384,72 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   return ppos;  
 }
 
+
+/** Simulate lightning
+*
+*
+* ppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 19;
+  struct pstep program[length] = {{0,0,0,0,2000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,6000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,60},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,3000},
+                                  
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,3000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,90},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,2000},
+                                  
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,9000},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,160},
+                                  {100,100,100,100,20},
+                                  {0,0,0,0,4000},
+                                  
+                            };
+  struct pstep command;
+  
+  ppos = ppos + 1;
+  if (ppos >= length)
+    ppos = 0;
+    
+  command = program[ppos];
+  
+  set_candle(0,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(1,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(2,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(3,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(4,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+
+  Tlc.update();
+  delay(command.delayafter+speedmod);
+
+  return ppos;  
+}
+
 void loop()
 {
     //serial_control();
     //ppos = fire(ppos,0,-50,80,0,0);
-    ppos = pump(ppos,-100,-100,100,0,0);
+    //ppos = pump(ppos,-100,-100,100,0,0);
+    ppos = lightning(ppos,0,0,0,0,0);
 }
 // 1,90,90,30,30,10,10,90,100g
 // 1,20,20,90,90,10,10,90,100g
