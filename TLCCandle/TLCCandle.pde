@@ -251,65 +251,7 @@ void random_candle(int number)
     set_candle(number, r, g, b, bright);
 }
 
-void serial_control()
-{
-for (int i = 0; i < numcandles; i++)
-        random_candle(i);
 
-    Tlc.update();
-
-    delay(flicker);
-
-    // Read commands from serial
-    fieldIndex=0;
-    for (int i ; i<NUMBER_OF_FIELDS; i++)
-    {
-      values[i]=0;
-    }
-    while (Serial.available())
-    {
-
-      char ch = Serial.read();
-  
-      if (ch>='0' && ch<='9')
-      {
-        values[fieldIndex] = (values[fieldIndex] *10) + (ch -'0');
-        
-      }
-      else if (ch==',')
-      {       
-        if (fieldIndex < NUMBER_OF_FIELDS - 1)
-        {
-          fieldIndex ++;
-        }
-      }
-      else if (ch='g') // go !
-      {
-        int num;
-        
-        num = values[0];
-        candle[num].minr = values[1];
-        candle[num].maxr = values[2];
-        candle[num].ming = values[3];
-        candle[num].maxg = values[4];
-        candle[num].minb = values[5];
-        candle[num].maxb = values[6];
-        candle[num].minbright = values[7];
-        candle[num].maxbright = values[8];
-        
-        random_candle(num);
-        Tlc.update();
-        for (int i ; i<NUMBER_OF_FIELDS; i++)
-        {
-            values[i] = 0;
-        }
-      }
-      else
-      {
-        // Do nothing not a command
-      }
-    }
-}
 
 /** Simulate fire
 *
@@ -516,31 +458,6 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
 **/
 int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
-  /*const int length = 19;
-  struct pstep program[length] = {{0,0,0,0,2000},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,6000},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,60},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,3000},
-                                  
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,3000},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,90},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,2000},
-                                  
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,9000},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,160},
-                                  {100,100,100,100,20},
-                                  {0,0,0,0,4000},
-                                  
-                            };*/
-
   struct pstep command;
   if (debugprint){
       Serial.print("Program alert\n");
@@ -637,8 +554,6 @@ int read_ir(int old){
 
 void loop()
 {
-    //serial_control();
-    
     switch (program){
       case(1):
         ppos = fire(ppos,100,-90,-90,0,0);
@@ -663,6 +578,4 @@ void loop()
    //program = read_ir(program);
     
 }
-// 1,90,90,30,30,10,10,90,100g
-// 1,20,20,90,90,10,10,90,100g
-// 1,20,20,10,10,90,90,50,100g
+
