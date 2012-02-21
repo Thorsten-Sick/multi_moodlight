@@ -46,8 +46,30 @@
     This sketch does the Knight Rider strobe across a line of LEDs.
 
     Alex Leone <acleone ~AT~ gmail.com>, 2009-02-03 */
+    
+    // Up to date source:
+    // http://code.google.com/p/tlc5940arduino/
+    
+/*
+ * IRremote: IRrecvDemo - demonstrates receiving IR codes with IRrecv
+ * An IR detector/demodulator must be connected to the input RECV_PIN.
+ * Version 0.1 July, 2009
+ * Copyright 2009 Ken Shirriff
+ * http://arcfn.com
+ *
+ * data pin for IR is pin 2
+ *
+ */
+ 
+ // Problems using IRremote AND TLC: http://arduino.cc/forum/index.php?action=printpage;topic=61412.0
 
 #include "Tlc5940.h"
+//#include <IRremote.h>
+
+int RECV_PIN = 2;
+
+//IRrecv irrecv(RECV_PIN);
+
 
 const int numcandles = 5;
 
@@ -81,8 +103,9 @@ int ppos = 0;
 
 struct candledata candle[numcandles];
 
-const int debugprint = 0;
+const int debugprint = 1;
 
+int program = 1;
 
 const int flicker = 500;
 
@@ -96,8 +119,9 @@ int set = 0;
 
 void setup()
 {
-  /* Call Tlc.init() to setup the tlc.
-     You can optionally pass an initial PWM value (0 - 4095) for all channels.*/
+
+  //irrecv.enableIRIn(); // Start the receiver
+  
   randomSeed(1235);
   Tlc.init();
   Tlc.clear();
@@ -118,10 +142,27 @@ void setup()
   }
 }
 
+/** The additional under-floor rgb strip
+* Two colors are arduino pins, one is from the chip
+* (want more pins !)
+*
+* brightness: between 0 and 100
+**/
+/*void set_floor(int red, int green, int blue, int brightness)
+{
+  int ired, iblue, igreen;
+  
+  ired = int (40 * red / 100 * brightness); 
+  igreen = int (40 * green / 100 * brightness);
+  iblue = int (40 * blue / 100 * brightness);
+  
+  Tlc.set(15, map(igreen,0,100,0,4095));
+}*/
+
 
 /**
 *
-* red, green blue: between 0 and 4095
+* red, green blue: between 0 and 100
 * brightness: between 0 and 100
 *
 */
@@ -160,12 +201,18 @@ void set_candle(unsigned char number, int red, int green, int blue, int brightne
   
   
   if (debugprint){
-      Serial.print("red: "); 
-      Serial.println(red);
+      Serial.print("Number: "); 
+      Serial.println(number);
+      Serial.print("First channel: "); 
+      Serial.println(channel);
+      Serial.print("Set candle red: "); 
+      Serial.println(ired);
+      Serial.print("Set candle green: "); 
+      Serial.println(igreen);
+      Serial.print("Set candle blue: "); 
+      Serial.println(iblue);
       Serial.print("bright: "); 
       Serial.println(brightness);
-      Serial.print("IRED: "); 
-      Serial.println(ired);
   }
   
   Tlc.set(channel, ired);
@@ -303,7 +350,9 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
                               {100,60,5,80,40}
                             };
   struct pstep command;
-  
+  if (debugprint){
+      Serial.print("Program fire\n");
+  }  
   ppos = ppos + 1;
   if (ppos >= length)
     ppos = 0;
@@ -365,7 +414,11 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
                                   
                             };
   struct pstep command;
-  
+  if (debugprint){
+      Serial.print("Program pump ");
+      Serial.print(ppos);
+      Serial.print("\n");
+  }  
   ppos = ppos + 1;
   if (ppos >= length)
     ppos = 0;
@@ -425,7 +478,11 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
                                   
                             };
   struct pstep command;
-  
+  if (debugprint){
+      Serial.print("Program lightning");
+      Serial.print(ppos);
+      Serial.print("\n");
+  }  
   ppos = ppos + 1;
   if (ppos >= length)
     ppos = 0;
@@ -483,8 +540,11 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
                                   {0,0,0,0,4000},
                                   
                             };*/
+
   struct pstep command;
-  
+  if (debugprint){
+      Serial.print("Program alert\n");
+  }  
   ppos = ppos + 1;
   if (ppos >= numcandles)
     ppos = 0;
@@ -505,14 +565,103 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   return ppos;  
 }
 
+/** Simple test pattern
+*
+*
+* ppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 2;
+  struct pstep program[length] = {{100,0,0,100,1000},
+                                  {100,0,0,0,0}             
+                            };
+  struct pstep command;
+  if (debugprint){
+      Serial.print("Program test ");
+      Serial.print(ppos);
+      Serial.print("\n");
+  }  
+  ppos = ppos + 1;
+  if (ppos >= length)
+    ppos = 0;
+    
+  command = program[ppos];
+  
+  set_candle(0,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(1,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(2,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(3,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+  set_candle(4,command.r+rmod, command.g+gmod, command.b+bmod, command.bright+brightmod);
+
+  Tlc.update();
+  delay(command.delayafter+speedmod);
+
+  return ppos;  
+}
+
+/** Read IR and return the key code.
+* This function is for the remote control Model 23057
+* 
+*
+**/
+/*
+int read_ir(int old){
+  int val;
+  decode_results results;
+  
+  // Read IR
+  if (irrecv.decode(&results)) {
+    //  Serial.println(results.value, HEX);
+    irrecv.resume(); // Receive the next value
+    val = results.value;
+    
+    // Somtimes button presses can generate a number + 0x800
+    if (val > 0x800){
+      val = val - 0x800;
+    }
+    return val;
+  }
+
+  return old;    
+
+}*/
 
 void loop()
 {
     //serial_control();
-    //ppos = fire(ppos,0,0,0,0,0);
-    ppos = pump(ppos,-100,-100,100,0,0);
-    //ppos = lightning(ppos,-100,-100,100,0,0);
-    //ppos = alert(ppos,0,0,-40,0,0);
+    
+    switch (program){
+      case(1):
+        ppos = fire(ppos,100,-90,-90,0,0);
+        break;
+      case (2):
+        ppos = pump(ppos,-100,-100,100,0,0);
+        break;
+      case (3):
+        ppos = lightning(ppos,-100,-100,100,0,0);
+        break;
+      case (4):
+        ppos = alert(ppos,0,0,-40,0,0);
+        break;
+      case (9):
+        ppos = test(ppos,0,0,0,0,0);
+        break;
+   }
+    
+    //set_special_candle(0, 100, 0, 100);
+    
+    
+   //program = read_ir(program);
+    
 }
 // 1,90,90,30,30,10,10,90,100g
 // 1,20,20,90,90,10,10,90,100g
