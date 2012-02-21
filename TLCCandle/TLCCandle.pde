@@ -73,21 +73,6 @@ int RECV_PIN = 2;
 
 const int numcandles = 5;
 
-struct candledata {
-  // Min values
-  unsigned char minr;
-  unsigned char ming;
-  unsigned char minb;
-  unsigned char minbright;
-  
-  // Max values
-  unsigned char maxr;
-  unsigned char maxg;
-  unsigned char maxb;
-  unsigned char maxbright;
-  
-  int flicker;
-};
 
 // Program steps
 struct pstep{
@@ -101,21 +86,11 @@ struct pstep{
 // Program position
 int ppos = 0;
 
-struct candledata candle[numcandles];
 
-const int debugprint = 1;
+const int debugprint = 0;
 
 int program = 1;
 
-const int flicker = 500;
-
-// Serial parser
-
-const int NUMBER_OF_FIELDS=9;
-int fieldIndex=0;
-int values[NUMBER_OF_FIELDS];
-
-int set = 0;
 
 void setup()
 {
@@ -127,19 +102,7 @@ void setup()
   Tlc.clear();
   if (debugprint)
     Serial.begin(9600);
-  set = 0;
-  
-  // Set candles
-  for (int i = 0; i < numcandles; i++){
-      candle[i].minr=50;
-      candle[i].maxr=50;
-      candle[i].ming=50;
-      candle[i].maxg=50;
-      candle[i].minb=50;
-      candle[i].maxb=50;
-      candle[i].minbright=50;
-      candle[i].maxbright=50;
-  }
+
 }
 
 /** The additional under-floor rgb strip
@@ -219,36 +182,6 @@ void set_candle(unsigned char number, int red, int green, int blue, int brightne
   Tlc.set(channel + 1, igreen);
   Tlc.set(channel + 2, iblue);
 
-}
-
-/**
-* 
-* Do some random calculation for new candle values. Also update the candle
-*
-* number: the cnadle to sets
-*
-**/
-void random_candle(int number)
-{
-    int r,g,b, bright;
-    if (debugprint){
-        Serial.println("Setting");
-        Serial.print("Number: ");
-        Serial.println(number);
-        Serial.print("R: ");
-        Serial.println(candle[number].minr);
-        Serial.print("G: ");
-        Serial.println(candle[number].ming);
-        Serial.print("B: ");
-        Serial.println(candle[number].minb);
-    }
-          
-    r = random (candle[number].minr, candle[number].maxr);
-    g = random (candle[number].ming, candle[number].maxg);
-    b = random (candle[number].minb, candle[number].maxb);
-    bright=random(candle[number].minbright,candle[number].maxbright);
-          
-    set_candle(number, r, g, b, bright);
 }
 
 
