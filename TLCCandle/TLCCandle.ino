@@ -114,20 +114,43 @@ void setup()
 
 /** The additional under-floor rgb strip
 * Two colors are arduino pins, one is from the chip
-* (want more pins !)
+* (want more pins !). The one is reversed 
 *
 * brightness: between 0 and 100
 **/
-/*void set_floor(int red, int green, int blue, int brightness)
+void set_floor(int red, int green, int blue, int brightness)
 {
   int ired, iblue, igreen;
   
-  ired = int (40 * red / 100 * brightness); 
-  igreen = int (40 * green / 100 * brightness);
-  iblue = int (40 * blue / 100 * brightness);
+  ired = red * brightness / 100;
+  if (ired <0)
+    ired = 0;
+  if (ired > 100)
+    ired = 100;
+    
+  igreen = green * brightness / 100;
+  if (igreen <0)
+    igreen = 0;
+  if (igreen > 100)
+    igreen = 100;
+    
+  iblue = blue * brightness / 100;
+  if (blue <0)
+    iblue = 0;
+  if (iblue > 100)
+    iblue = 100;
   
-  Tlc.set(15, map(igreen,0,100,0,4095));
-}*/
+  //ired = map (red * brightness / 100, 0, 100, 0, 100);
+  //igreen = map (green * brightness / 100, 0, 100, 0, 100);
+  //iblue = map (blue * brightness / 100, 0, 100, 0, 100);
+//  ired = int (40 * red / 100 * brightness); 
+//  igreen = int (40 * green / 100 * brightness);
+//  iblue = int (40 * blue / 100 * brightness);
+  
+  Tlc.set(15, map(igreen,0,100,4095, 0)); // Green
+  analogWrite(5, map(ired,0,100,0,255)); // Red
+  analogWrite(6, map(iblue,0,100,0,255)); //Blue
+}
 
 
 /**
@@ -213,23 +236,23 @@ void set_candle(unsigned char number, int red, int green, int blue, int brightne
 int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 16;
-  struct pstep program[length] = {{100,80,10,100,0,0,0,0,70},
-                              {100,70,10,100,0,0,0,0,7},
-                              {100,50,10,100,0,0,0,0,55},
-                              {100,30,10,100,0,0,0,0,40},
-                              {100,35,3,100,0,0,0,0,4},
-                              {100,10,10,80,0,0,0,0,50},
-                              {100,30,10,100,0,0,0,0,40},
-                              {100,50,10,100,0,0,0,0,40},
+  struct pstep program[length] = {{100,80,10,100,100,80,10,50,70},
+                              {100,70,10,100,100,70,10,50,7},
+                              {100,50,10,100,100,50,10,50,55},
+                              {100,30,10,100,100,30,10,50,40},
+                              {100,35,3,100,100,35,3,50,4},
+                              {100,10,10,80,100,10,10,40,50},
+                              {100,30,10,100,100,30,10,50,40},
+                              {100,50,10,100,100,50,10,50,40},
                               
-                              {100,90,5,80,0,0,0,0,70},
-                              {100,80,5,80,0,0,0,0,7},
-                              {100,60,5,80,0,0,0,0,55},
-                              {100,40,5,80,0,0,0,0,40},
-                              {100,35,3,80,0,0,0,0,4},
-                              {100,20,5,70,0,0,0,0,50},
-                              {100,40,5,80,0,0,0,0,40},
-                              {100,60,5,80,0,0,0,0,40}
+                              {100,90,5,80,100,90,5,40,70},
+                              {100,80,5,80,100,80,5,40,7},
+                              {100,60,5,80,100,60,5,40,55},
+                              {100,40,5,80,100,40,5,40,40},
+                              {100,35,3,80,100,35,3,40,4},
+                              {100,20,5,70,100,20,5,30,50},
+                              {100,40,5,80,100,40,5,40,40},
+                              {100,60,5,80,100,60,5,40,40}
                             };
   struct pstep command;
   if (debugprint){
@@ -246,6 +269,8 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   set_candle(3,command.top_r-10+rmod, command.top_g-10+gmod, command.top_b+bmod, command.top_bright-30+brightmod);
   set_candle(0,command.top_r-20+rmod, command.top_g-20+gmod, command.top_b+bmod, command.top_bright-60+brightmod);
   set_candle(4,command.top_r-20+rmod, command.top_g-20+gmod, command.top_b+bmod, command.top_bright-60+brightmod);
+  
+  set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
   delay(command.delayafter+speedmod);
@@ -269,29 +294,29 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 22;
-  struct pstep program[length] = {{50,50,50,0,0,0,0,0,35},
-                                  {50,50,50,30,0,0,0,0,35},
-                                  {50,50,50,50,0,0,0,0,35},
-                                  {50,50,50,70,0,0,0,0,35},
-                                  {50,50,50,90,0,0,0,0,35},
-                                  {50,50,50,100,0,0,0,0,50},
-                                  {50,50,50,90,0,0,0,0,35},
-                                  {50,50,50,70,0,0,0,0,35},
-                                  {50,50,50,50,0,0,0,0,35},
-                                  {50,50,50,30,0,0,0,0,45},
-                                  {50,50,50,0,0,0,0,0,45},
+  struct pstep program[length] = {{50,50,50,0,50,50,50,0,35},
+                                  {50,50,50,30,50,50,50,5,35},
+                                  {50,50,50,50,50,50,50,10,35},
+                                  {50,50,50,70,50,50,50,15,35},
+                                  {50,50,50,90,50,50,50,20,35},
+                                  {50,50,50,100,50,50,50,25,50},
+                                  {50,50,50,90,50,50,50,20,35},
+                                  {50,50,50,70,50,50,50,15,35},
+                                  {50,50,50,50,50,50,50,10,35},
+                                  {50,50,50,30,50,50,50,5,45},
+                                  {50,50,50,0,50,50,50,0,45},
                                   
-                                  {50,50,50,0,0,0,0,0,35},
-                                  {50,50,50,30,0,0,0,0,35},
-                                  {50,50,50,50,0,0,0,0,35},
-                                  {50,50,50,70,0,0,0,0,35},
-                                  {50,50,50,90,0,0,0,0,35},
-                                  {50,50,50,100,0,0,0,0,50},
-                                  {50,50,50,90,0,0,0,0,35},
-                                  {50,50,50,70,0,0,0,0,35},
-                                  {50,50,50,50,0,0,0,0,45},
-                                  {50,50,50,30,0,0,0,0,45},
-                                  {50,50,50,0,0,0,0,0,800},
+                                  {50,50,50,0,50,50,50,0,35},
+                                  {50,50,50,30,50,50,50,5,35},
+                                  {50,50,50,50,50,50,50,10,35},
+                                  {50,50,50,70,50,50,50,15,35},
+                                  {50,50,50,90,50,50,50,20,35},
+                                  {50,50,50,100,50,50,50,25,50},
+                                  {50,50,50,90,50,50,50,20,35},
+                                  {50,50,50,70,50,50,50,15,35},
+                                  {50,50,50,50,50,50,50,10,45},
+                                  {50,50,50,30,50,50,50,5,45},
+                                  {50,50,50,0,50,50,50,0,800},
                                   
                                   
                             };
@@ -312,6 +337,8 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   set_candle(2,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(3,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(4,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  
+  set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
   delay(command.delayafter+speedmod);
@@ -337,25 +364,25 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
 {
   const int length = 19;
   struct pstep program[length] = {{0,0,0,0,0,0,0,0,2000},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,6000},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,60},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,3000},
                                   
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,3000},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,90},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,2000},
                                   
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,9000},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,160},
-                                  {100,100,100,100,0,0,0,0,20},
+                                  {100,100,100,100,100,100,100,100,20},
                                   {0,0,0,0,0,0,0,0,4000},
                                   
                             };
@@ -376,6 +403,8 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
   set_candle(2,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(3,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(4,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  
+  set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
   delay(command.delayafter+speedmod);
@@ -399,6 +428,8 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
 int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   struct pstep command;
+  int bot_bright;
+  
   if (debugprint){
       Serial.print("Program alert\n");
   }  
@@ -416,8 +447,21 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   
   set_candle(ppos,100 + rmod, 100 + gmod, 100 + bmod, 100 + brightmod);
   
+  
+  // for 5 candles:
+  if (numcandles != 5)
+    bot_bright = 0;
+  else if ((ppos == 0) || (ppos == 4))
+    bot_bright = 20;
+  else if ((ppos == 1) || (ppos == 3))
+    bot_bright = 50;  
+  else if (ppos == 2)
+    bot_bright = 100;  
+  
+  set_floor(50+rmod, 50+gmod, 50+bmod, bot_bright);
+  
   Tlc.update();
-  delay(100+speedmod);
+  delay(1000+speedmod);
 
   return ppos;  
 }
@@ -438,8 +482,8 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 2;
-  struct pstep program[length] = {{100,0,0,100,0,0,0,0,1000},
-                                  {100,0,0,0,0,0,0,0,0}             
+  struct pstep program[length] = {{100,0,0,100,100,0,0,100,1000},
+                                  {100,0,0,0,0,0,0,0,1000}             
                             };
   struct pstep command;
   if (debugprint){
@@ -458,6 +502,8 @@ int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   set_candle(2,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(3,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(4,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  
+  set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
   delay(command.delayafter+speedmod);
@@ -505,7 +551,7 @@ void loop()
         ppos = lightning(ppos,-100,-100,100,0,0);
         break;
       case (4):
-        ppos = alert(ppos,0,0,-40,0,0);
+        ppos = alert(ppos,0,-100,-100,0,0);
         break;
       case (9):
         ppos = test(ppos,0,0,0,0,0);
