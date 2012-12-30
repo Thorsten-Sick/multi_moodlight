@@ -50,26 +50,23 @@
     // Up to date source:
     // http://code.google.com/p/tlc5940arduino/
     
+
 /*
- * IRremote: IRrecvDemo - demonstrates receiving IR codes with IRrecv
- * An IR detector/demodulator must be connected to the input RECV_PIN.
- * Version 0.1 July, 2009
- * Copyright 2009 Ken Shirriff
- * http://arcfn.com
- *
+ * Original plan: attach a IR Remote to the light. New plan: pushbutton
  * data pin for IR is pin 2
  *
+ * Lacking Timers this pin is now a pushbutton (to be honest: it is maybe 
+ * better than to be searching for a remote all the time)
  */
  
- // Problems using IRremote AND TLC: http://arduino.cc/forum/index.php?action=printpage;topic=61412.0
-
 #include "Tlc5940.h"
-//#include <IRremote.h>
 
-int RECV_PIN = 2;
+const int buttonPin = 2;
+#define BOUNCE_DURATION 60   // define an appropriate bounce time in ms for your switches
+volatile unsigned long bounceTime=0; // variable to hold ms count to debounce a pressed switch
 
-//IRrecv irrecv(RECV_PIN);
 
+long next = 0;  // when to display the next effect
 
 const int numcandles = 5;
 
@@ -101,15 +98,38 @@ int program = 1;
 
 void setup()
 {
-
-  //irrecv.enableIRIn(); // Start the receiver
+  pinMode(buttonPin, INPUT);
+  attachInterrupt(0, intHandler, RISING);
   
+  Serial.begin(9600);
   randomSeed(1235);
   Tlc.init();
-  Tlc.clear();
+  Tlc.clear();  
   if (debugprint)
     Serial.begin(9600);
 
+}
+
+void intHandler(){  
+  // http://arduino.cc/forum/index.php/topic,2378.0.html
+  // this is the interrupt handler for button presses
+  // it ignores presses that occur in intervals less then the bounce time
+  if(millis() > bounceTime)  
+  {
+      program += 1;
+      next = 0;
+      ppos = 0;
+      clear_floor();
+      // Your code here to handle new button press
+      bounceTime = millis() + BOUNCE_DURATION;  // set whatever bounce time in ms is appropriate
+ }
+}
+
+// Set floor lights to off
+void clear_floor()
+{
+  set_floor(0,0,0,0);
+  Tlc.update();
 }
 
 /** The additional under-floor rgb strip
@@ -139,13 +159,6 @@ void set_floor(int red, int green, int blue, int brightness)
     iblue = 0;
   if (iblue > 100)
     iblue = 100;
-  
-  //ired = map (red * brightness / 100, 0, 100, 0, 100);
-  //igreen = map (green * brightness / 100, 0, 100, 0, 100);
-  //iblue = map (blue * brightness / 100, 0, 100, 0, 100);
-//  ired = int (40 * red / 100 * brightness); 
-//  igreen = int (40 * green / 100 * brightness);
-//  iblue = int (40 * blue / 100 * brightness);
   
   Tlc.set(15, map(igreen,0,100,4095, 0)); // Green
   analogWrite(5, map(ired,0,100,0,255)); // Red
@@ -223,7 +236,7 @@ void set_candle(unsigned char number, int red, int green, int blue, int brightne
 * blue: 0
 * bright: from 0 to 100, there is not much difference from 40 to 100
 *
-* ppos: Program position
+* lppos: Program position
 * rmod: red modification, will be added
 * gmod: green modification, will be added
 * bmod: blue modification, will be added
@@ -233,7 +246,7 @@ void set_candle(unsigned char number, int red, int green, int blue, int brightne
 *
 * return: the new ppos
 **/
-int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+int fire(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 16;
   struct pstep program[length] = {{100,80,10,100,100,80,10,50,70},
@@ -258,11 +271,11 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   if (debugprint){
       Serial.print("Program fire\n");
   }  
-  ppos = ppos + 1;
-  if (ppos >= length)
-    ppos = 0;
+  lppos = lppos + 1;
+  if (lppos >= length)
+    lppos = 0;
     
-  command = program[ppos];
+  command = program[lppos];
   
   set_candle(2,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(1,command.top_r-10+rmod, command.top_g-10+gmod, command.top_b+bmod, command.top_bright-30+brightmod);
@@ -273,15 +286,16 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
-  delay(command.delayafter+speedmod);
+  //delay(command.delayafter+speedmod);
+    next = millis() +command.delayafter+speedmod;
 
-  return ppos;  
+  return lppos;  
 }
 
 /** Simulate heart pumping
 *
 *
-* ppos: Program position
+* lppos: Program position
 * rmod: red modification, will be added
 * gmod: green modification, will be added
 * bmod: blue modification, will be added
@@ -291,7 +305,7 @@ int fire(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 *
 * return: the new ppos
 **/
-int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+int pump(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 22;
   struct pstep program[length] = {{50,50,50,0,50,50,50,0,35},
@@ -323,14 +337,14 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   struct pstep command;
   if (debugprint){
       Serial.print("Program pump ");
-      Serial.print(ppos);
+      Serial.print(lppos);
       Serial.print("\n");
   }  
-  ppos = ppos + 1;
-  if (ppos >= length)
-    ppos = 0;
+  lppos = lppos + 1;
+  if (lppos >= length)
+    lppos = 0;
     
-  command = program[ppos];
+  command = program[lppos];
   
   set_candle(0,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(1,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
@@ -342,15 +356,16 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 
   Tlc.update();
   delay(command.delayafter+speedmod);
+  //next = millis() + command.delayafter+speedmod;
 
-  return ppos;  
+  return lppos;  
 }
 
 
 /** Simulate lightning
 *
 *
-* ppos: Program position
+* lppos: Program position
 * rmod: red modification, will be added
 * gmod: green modification, will be added
 * bmod: blue modification, will be added
@@ -360,7 +375,7 @@ int pump(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 *
 * return: the new ppos
 **/
-int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+int lightning(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 19;
   struct pstep program[length] = {{0,0,0,0,0,0,0,0,2000},
@@ -389,14 +404,14 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
   struct pstep command;
   if (debugprint){
       Serial.print("Program lightning");
-      Serial.print(ppos);
+      Serial.print(lppos);
       Serial.print("\n");
   }  
-  ppos = ppos + 1;
-  if (ppos >= length)
-    ppos = 0;
+  lppos = lppos + 1;
+  if (lppos >= length)
+    lppos = 0;
     
-  command = program[ppos];
+  command = program[lppos];
   
   set_candle(0,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(1,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
@@ -407,15 +422,18 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
   set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
-  delay(command.delayafter+speedmod);
+  //delay(command.delayafter+speedmod);
+  next = millis() + command.delayafter + speedmod;
+  //next =0;
 
-  return ppos;  
+  return lppos;  
 }
 
-/** Simulate an alert
+
+/** Complicated way to switch it off
 *
 *
-* ppos: Program position
+* lppos: Program position
 * rmod: red modification, will be added
 * gmod: green modification, will be added
 * bmod: blue modification, will be added
@@ -425,7 +443,67 @@ int lightning(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmo
 *
 * return: the new ppos
 **/
-int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+
+int light_off(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+{
+  const int length = 11;
+  struct pstep program[length] = {{100,0,0,100,100,0,0,100,500},
+                                  {80,0,0,100,100,0,0,100,500},                                  
+                                  {60,0,0,100,100,0,0,100,500},                                  
+                                  {40,0,0,100,100,0,0,100,500},                                  
+                                  {20,0,0,100,100,0,0,100,500},                                  
+                                  {0,0,0,0,100,0,0,100,1000},                                  
+                                  {0,0,0,0,80,0,0,100,500},                                  
+                                  {0,0,0,0,60,0,0,100,500},
+                                  {0,0,0,0,40,0,0,100,500},
+                                  {0,0,0,0,20,0,0,100,500},                                  
+                                  {0,0,0,0,0,0,0,0,500}                                  
+                            };
+  struct pstep command;
+  if (debugprint){
+      Serial.print("Program off");
+      Serial.print(lppos);
+      Serial.print("\n");
+  }  
+
+  if (lppos < length-1)
+  {
+    lppos = lppos + 1; // Will be stuck at the end of the program !
+  }
+    
+  command = program[lppos];
+  /*
+  set_candle(0,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  
+  set_candle(1,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  set_candle(2,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  set_candle(3,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  set_candle(4,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
+  
+  set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
+
+  Tlc.update();
+  //delay(command.delayafter+speedmod);
+  next = millis() + command.delayafter + speedmod;
+  //next =0;
+
+  return lppos; */ 
+}
+
+/** Simulate an alert
+*
+*
+* lppos: Program position
+* rmod: red modification, will be added
+* gmod: green modification, will be added
+* bmod: blue modification, will be added
+* brightmod: bright modification, will be added
+* speedmod: added to delay. + will be slower, - faster
+*
+*
+* return: the new ppos
+**/
+int alert(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   struct pstep command;
   int bot_bright;
@@ -433,43 +511,42 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   if (debugprint){
       Serial.print("Program alert\n");
   }  
-  ppos = ppos + 1;
-  if (ppos >= numcandles)
-    ppos = 0;
-    
-  //command = program[ppos];
-  
+  lppos = lppos + 1;
+  if (lppos >= numcandles)
+    lppos = 0;
+      
   for (int i = 0; i< numcandles; i ++)
   {
-    if (i != ppos)
+    if (i != lppos)
       set_candle(i,0,0,0,0);
   }
   
-  set_candle(ppos,100 + rmod, 100 + gmod, 100 + bmod, 100 + brightmod);
+  set_candle(lppos,100 + rmod, 100 + gmod, 100 + bmod, 100 + brightmod);
   
   
   // for 5 candles:
   if (numcandles != 5)
     bot_bright = 0;
-  else if ((ppos == 0) || (ppos == 4))
+  else if ((lppos == 0) || (lppos == 4))
     bot_bright = 20;
-  else if ((ppos == 1) || (ppos == 3))
+  else if ((lppos == 1) || (lppos == 3))
     bot_bright = 50;  
-  else if (ppos == 2)
+  else if (lppos == 2)
     bot_bright = 100;  
   
   set_floor(50+rmod, 50+gmod, 50+bmod, bot_bright);
   
   Tlc.update();
-  delay(1000+speedmod);
+  //delay(1000+speedmod);
+  next = millis() + 250 + speedmod;
 
-  return ppos;  
+  return lppos;  
 }
 
 /** Simple test pattern
 *
 *
-* ppos: Program position
+* lppos: Program position
 * rmod: red modification, will be added
 * gmod: green modification, will be added
 * bmod: blue modification, will be added
@@ -479,7 +556,7 @@ int alert(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 *
 * return: the new ppos
 **/
-int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
+int test(int lppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
 {
   const int length = 2;
   struct pstep program[length] = {{100,0,0,100,100,0,0,100,1000},
@@ -488,14 +565,14 @@ int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   struct pstep command;
   if (debugprint){
       Serial.print("Program test ");
-      Serial.print(ppos);
+      Serial.print(lppos);
       Serial.print("\n");
   }  
-  ppos = ppos + 1;
-  if (ppos >= length)
-    ppos = 0;
+  lppos = lppos + 1;
+  if (lppos >= length)
+    lppos = 0;
     
-  command = program[ppos];
+  command = program[lppos];
   
   set_candle(0,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
   set_candle(1,command.top_r+rmod, command.top_g+gmod, command.top_b+bmod, command.top_bright+brightmod);
@@ -506,41 +583,47 @@ int test(int ppos, int rmod, int gmod, int bmod, int brightmod, int speedmod)
   set_floor(command.bot_r+rmod, command.bot_g+gmod, command.bot_b+bmod, command.bot_bright+brightmod);
 
   Tlc.update();
-  delay(command.delayafter+speedmod);
-
-  return ppos;  
+  //delay(command.delayafter+speedmod);
+  next = millis() + command.delayafter+speedmod;
+  return lppos;  
 }
 
-/** Read IR and return the key code.
-* This function is for the remote control Model 23057
-* 
-*
-**/
-/*
-int read_ir(int old){
-  int val;
-  decode_results results;
-  
-  // Read IR
-  if (irrecv.decode(&results)) {
-    //  Serial.println(results.value, HEX);
-    irrecv.resume(); // Receive the next value
-    val = results.value;
-    
-    // Somtimes button presses can generate a number + 0x800
-    if (val > 0x800){
-      val = val - 0x800;
-    }
-    return val;
-  }
 
-  return old;    
-
-}*/
 
 void loop()
 {
+  int buttonState = 0;
+  
+  while (Serial.available() > 0) {
+    program = Serial.parseInt();// int green = Serial.parseInt();
+    next = 0;
+  }
+
+
+
+//    if (Serial.read() == '\n') { 
+  
+  //buttonState = digitalRead(buttonPin);
+
+  // check if the pushbutton is pressed.
+  // if it is, the buttonState is HIGH:
+  //if (buttonState == HIGH) {     
+    // turn LED on:    
+  //  program += 1;
+  //} 
+  
+  if ((next == 0) or (next < millis()))
+  {
     switch (program){
+      case(0):
+        set_candle(0,0,0,0,0);
+        set_candle(1,0,0,0,0);
+        set_candle(2,0,0,0,0);
+        set_candle(3,0,0,0,0);
+        set_candle(4,0,0,0,0);
+        set_floor(0,0,0,0);
+        Tlc.update();
+        break;
       case(1):
         ppos = fire(ppos,100,-90,-90,0,0);
         break;
@@ -553,15 +636,16 @@ void loop()
       case (4):
         ppos = alert(ppos,0,-100,-100,0,0);
         break;
-      case (9):
+      /*case (9):
         ppos = test(ppos,0,0,0,0,0);
+        break;*/
+      default:
+        program = 0;
         break;
+    }
    }
     
-    //set_special_candle(0, 100, 0, 100);
-    
-    
-   //program = read_ir(program);
+
     
 }
 
